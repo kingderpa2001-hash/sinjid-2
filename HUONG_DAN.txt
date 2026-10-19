@@ -1,0 +1,18 @@
+=== SINJID - BẢN TỐI ƯU ===
+
+CÁCH LẤY FILE APK (không cần cài Android Studio)
+1. Đẩy toàn bộ file trong thư mục này lên repository GitHub của bạn (giữ nguyên cấu trúc).
+2. Vào tab "Actions" > "Build APK" > Run workflow (hoặc push lên main).
+3. Chờ chạy xong (khoảng 3-5 phút).
+4. Mở lần chạy đó, kéo xuống mục "Artifacts", tải "Sinjid-apk".
+5. Giải nén, chép app-debug.apk vào điện thoại và cài đặt.
+
+NHỮNG GÌ ĐÃ TỐI ƯU:
+- MainActivity: bật hardware acceleration, cải thiện WebView settings
+- AndroidManifest: hardwareAccelerated=true, largeHeap
+- index.html: cấu hình Ruffle tốt hơn (webgpu, quality high), joystick nhạy hơn
+- Workflow: không tải source map (.map) → APK nhỏ hơn rõ rệt
+- build.gradle: loại bỏ file thừa khi đóng gói
+
+Game chạy ngang màn hình, toàn màn hình, bằng Ruffle (phát Flash).
+Điều khiển: joystick ảo (WASD) + nút Tương tác (Space).

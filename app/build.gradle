@@ -1,0 +1,47 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.game.sinjid'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.game.sinjid'
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName '1.1'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // Nếu muốn bật minify sau này có thể thêm proguard
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        // Không nén swf/wasm để load nhanh hơn
+        noCompress 'swf', 'wasm'
+    }
+
+    packaging {
+        resources {
+            // Loại bỏ source map và file không cần thiết của Ruffle
+            excludes += [
+                '**/*.map',
+                '**/README.md',
+                '**/LICENSE*',
+                '**/package.json'
+            ]
+        }
+    }
+}

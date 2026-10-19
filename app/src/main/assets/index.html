@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%;background:#000;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  touch-action:none;overscroll-behavior:none}
+#p{position:fixed;inset:0;width:100%;height:100%}
+#p ruffle-player{width:100%!important;height:100%!important;display:block}
+#ui{position:fixed;inset:0;pointer-events:none;z-index:10}
+#ui.hide .ctl{display:none}
+.ctl,#tg{pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+#base{position:absolute;left:max(20px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));
+  width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.12);
+  border:2px solid rgba(255,255,255,.35)}
+#knob{position:absolute;left:38px;top:38px;width:64px;height:64px;border-radius:50%;
+  background:rgba(255,255,255,.4);border:2px solid rgba(255,255,255,.65)}
+#act{position:absolute;right:max(28px,env(safe-area-inset-right));bottom:max(36px,env(safe-area-inset-bottom));
+  width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.18);
+  border:2px solid rgba(255,255,255,.5);color:#fff;font:bold 15px/1.2 system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;text-align:center}
+#act.on{background:rgba(255,255,255,.45)}
+#tg{position:absolute;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));
+  width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);
+  border:2px solid rgba(255,255,255,.45);color:#fff;font-size:20px;
+  display:flex;align-items:center;justify-content:center}
+</style>
+<script>
+window.RufflePlayer = {
+  config: {
+    publicPath: "ruffle/",
+    preferredRenderer: "webgpu",
+    polyfills: true,
+    autoplay: "on",
+    unmuteOverlay: "hidden",
+    splashScreen: false,
+    letterbox: "on",
+    scale: "showAll",
+    quality: "high",
+    favorHiFiTimers: true,
+    logLevel: "warn"
+  }
+};
+</script>
+<script src="ruffle/ruffle.js"></script>
+</head>
+<body>
+<div id="p"></div>
+<div id="ui">
+  <div class="ctl" id="base"><div id="knob"></div></div>
+  <div class="ctl" id="act">Tương<br>tác</div>
+  <div id="tg">🎮</div>
+</div>
+<script>
+(function(){
+  var player, held = {}, timers = {};
+  var CODES = {w:["KeyW",87], a:["KeyA",65], s:["KeyS",83], d:["KeyD",68], " ":["Space",32]};
+
+  function fire(type, k, rep){
+    var c = CODES[k];
+    if(!c) return;
+    var e = new KeyboardEvent(type, {
+      key: k, code: c[0], keyCode: c[1], which: c[1],
+      repeat: !!rep, bubbles: true, cancelable: true
+    });
+    (player || document).dispatchEvent(e);
+  }
+
+  function press(k){
+    if(held[k]) return;
+    held[k] = true;
+    if(player) try{ player.focus(); }catch(e){}
+    fire("keydown", k, false);
+    timers[k] = setInterval(function(){ fire("keydown", k, true); }, 80);
+  }
+
+  function release(k){
+    if(!held[k]) return;
+    held[k] = false;
+    clearInterval(timers[k]);
+    delete timers[k];
+    fire("keyup", k, false);
+  }
+
+  function releaseAll(){
+    Object.keys(held).forEach(release);
+  }
+
+  window.addEventListener("load", function(){
+    var r = window.RufflePlayer.newest();
+    player = r.createPlayer();
+    player.style.cssText = "width:100%;height:100%;display:block;";
+    document.getElementById("p").appendChild(player);
+
+    player.ruffle().load({
+      url: "game.swf",
+      autoplay: "on",
+      unmuteOverlay: "hidden",
+      letterbox: "on",
+      scale: "showAll",
+      splashScreen: false,
+      quality: "high"
+    }).catch(function(err){
+      console.warn("Ruffle load error:", err);
+    });
+  });
+
+  // Joystick
+  var base = document.getElementById("base");
+  var knob = document.getElementById("knob");
+  var R = 70, KR = 32, activeId = null;
+
+  function stick(ev){
+    var b = base.getBoundingClientRect();
+    var dx = ev.clientX - (b.left + b.width/2);
+    var dy = ev.clientY - (b.top + b.height/2);
+    var d = Math.sqrt(dx*dx + dy*dy);
+    var max = R - KR + 8;
+    if(d > max){ dx = dx/d*max; dy = dy/d*max; }
+    knob.style.left = (R - KR + dx) + "px";
+    knob.style.top  = (R - KR + dy) + "px";
+    var t = max * 0.32;
+    dx < -t ? press("a") : release("a");
+    dx >  t ? press("d") : release("d");
+    dy < -t ? press("w") : release("w");
+    dy >  t ? press("s") : release("s");
+  }
+
+  function stickEnd(){
+    activeId = null;
+    knob.style.left = (R - KR) + "px";
+    knob.style.top  = (R - KR) + "px";
+    ["w","a","s","d"].forEach(release);
+  }
+
+  base.addEventListener("pointerdown", function(ev){
+    ev.preventDefault();
+    activeId = ev.pointerId;
+    base.setPointerCapture(ev.pointerId);
+    stick(ev);
+  });
+  base.addEventListener("pointermove", function(ev){
+    if(ev.pointerId === activeId){ ev.preventDefault(); stick(ev); }
+  });
+  base.addEventListener("pointerup", stickEnd);
+  base.addEventListener("pointercancel", stickEnd);
+  base.addEventListener("pointerleave", function(ev){
+    if(ev.pointerId === activeId) stickEnd();
+  });
+
+  // Nút tương tác (Space)
+  var act = document.getElementById("act");
+  act.addEventListener("pointerdown", function(ev){
+    ev.preventDefault();
+    act.setPointerCapture(ev.pointerId);
+    act.classList.add("on");
+    press(" ");
+  });
+  function actEnd(){ act.classList.remove("on"); release(" "); }
+  act.addEventListener("pointerup", actEnd);
+  act.addEventListener("pointercancel", actEnd);
+
+  // Ẩn/hiện điều khiển
+  var ui = document.getElementById("ui");
+  document.getElementById("tg").addEventListener("click", function(){
+    ui.classList.toggle("hide");
+    if(ui.classList.contains("hide")){ stickEnd(); actEnd(); }
+  });
+
+  document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  document.addEventListener("visibilitychange", function(){
+    if(document.hidden) releaseAll();
+  });
+})();
+</script>
+</body>
+</html>
